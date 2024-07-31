@@ -62,13 +62,6 @@ def fft1d(x: t.Tensor) -> t.Tensor:
     '''
     return einops.einsum(x, fourier_basis, "... p2, p2 p1 -> ... p1")
 
-#%%
-animate_lines(
-    fourier_basis, 
-    snapshot_index=fourier_basis_names, 
-    snapshot='Fourier Component', 
-    title='Graphs of Fourier Components'
-)
 # %%
 
 # find all the number-only tokens in the vocabulary (the normal integers without spaces, leading zeros, or punctuation)
