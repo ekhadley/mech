@@ -1,30 +1,9 @@
-import os#; os.environ["ACCELERATE_DISABLE_RICH"] = "1"
-import webbrowser, re, itertools, einops, sys
-from functools import partial
-from pathlib import Path
-import torch as t
-from torch import Tensor
-import numpy as np
-from tqdm import tqdm, trange
-import plotly.express as px
-from jaxtyping import Float, Int, Bool
-from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
-from IPython.display import display, HTML
-from rich.table import Table, Column
-from rich import print as rprint
-import circuitsvis as cv
-from pathlib import Path
-from transformer_lens.hook_points import HookPoint
-from transformer_lens import utils, HookedTransformer, ActivationCache, patching
-from transformer_lens.components import Embed, Unembed, LayerNorm, MLP
-from plotly_utils import imshow, line, scatter, bar
-t.set_grad_enabled(False);
-
-purple = '\033[95m';blue = '\033[94m';cyan = '\033[96m';lime = '\033[92m';yellow = '\033[93m';red = "\033[38;5;196m";pink = "\033[38;5;206m";orange = "\033[38;5;202m";green = "\033[38;5;34m";gray = "\033[38;5;8m";bold = '\033[1m';underline = '\033[4m';endc = '\033[0m'
+from mechlibs import *
 device = t.device("cuda") if t.cuda.is_available() else t.device("cpu")
 MAIN = __name__ == "__main__"
+t.set_grad_enabled(False);
 t.manual_seed(42)
-
+#%%
 
 model = HookedTransformer.from_pretrained(
     "gpt2-small",
@@ -33,8 +12,9 @@ model = HookedTransformer.from_pretrained(
     fold_ln=True,
     refactor_factored_attn_matrices=True,
 )
-print(bold, green, "model loaded", endc)
+print(bold, green, model, endc)
 
+#%%
 
 def sample(model: HookedTransformer, prompt: str, ntok=50, show=True, showall=False) -> Union[Tensor, str]:
     toks = t.tensor(model.tokenizer(prompt)['input_ids'], device=device)
@@ -55,6 +35,7 @@ def show_top(logits, k=5):
     topv, topi = t.topk(logits, k, dim=-1)
     print(cyan, {model.tokenizer.decode(e): round(logits[e].item(), 3) for e in topi}, endc)
 
+#%%
 ############################################## dataset & modeling
 
 days = [' Monday', ' Tuesday', ' Wednesday', ' Thursday', ' Friday', ' Saturday', ' Sunday']
@@ -89,9 +70,12 @@ def score_logits(logits, dataset=weekdays):
     return correctlogits.mean().item()
     #return (correctlogits - maxlogits).mean().item()
 
-##################################################### ablations
+#%%
+
 clean_logits, clean_cache = model.run_with_cache(weekdays.prompts)
 print(f"{lime}clean model score: {score_logits(clean_logits)}{endc}")
+
+#%%
 
 def patch_attn_head_out_to_avg(
         orig_z: Float[Tensor, "batch seq nhead dhead"],
@@ -99,9 +83,7 @@ def patch_attn_head_out_to_avg(
         clean_cache: ActivationCache,
         hook: HookPoint
 ) -> Float[Tensor, "batch seq nhead dhead"]:
-    b = orig_z.shape[0]
-    mean = clean_cache[hook.name][:,:,head_idx,:].mean(0, keepdim=True).repeat(b, 1, 1)
-    orig_z[:,:,head_idx,:] = mean
+    orig_z[:,:,head_idx] = clean_cache['z', hook.layer()].mean(0, keepdim=True)[:, :, head_idx]
     return orig_z
 
 def patch_attn_head_out_to_zero(
@@ -138,6 +120,8 @@ def attn_head_mean_ablation(model=model, clean_cache=clean_cache, metric=score_l
     out = (out - out.mean()) / out.std()
     return out
 
+#%%
+
 mean_ablation = attn_head_mean_ablation()
 imshow(
     mean_ablation, 
@@ -145,6 +129,8 @@ imshow(
     title="dataset attention corrupted ablation",
     width=600
 )
+
+#%%
 
 #promptidx = 2
 #headlayer = 10
