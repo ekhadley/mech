@@ -1,6 +1,7 @@
 import os#; os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 import webbrowser, re, itertools, einops, sys
 from uuid import uuid4
+import functools
 from functools import partial
 from pathlib import Path
 import torch as t
@@ -30,8 +31,7 @@ def show(html):
         file.write(html)
     webbrowser.open(filename)
 
-
-def line(x, y=None, hover=None, xaxis='', yaxis='', **kwargs):
+def _line(x, y=None, hover=None, xaxis='', yaxis='', **kwargs):
     if type(y)==t.Tensor:
         y = utils.to_numpy(y.flatten())
     if type(x)==t.Tensor:
@@ -41,7 +41,6 @@ def line(x, y=None, hover=None, xaxis='', yaxis='', **kwargs):
     if x.ndim==1:
         fig.update_layout(showlegend=False)
     fig.show()
-
 
 def scatter(x, y, title="", xaxis="", yaxis="", colorbar_title="", **kwargs):
     fig = px.scatter(x=utils.to_numpy(x.flatten()), y=utils.to_numpy(y.flatten()), title=title, labels={"color": colorbar_title}, **kwargs)

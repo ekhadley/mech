@@ -8,7 +8,6 @@ t.no_grad()
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
-
 model = HookedTransformer.from_pretrained(
     "gpt2-small",
     center_unembed=True,
