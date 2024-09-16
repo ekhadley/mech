@@ -22,7 +22,11 @@ from transformer_lens import utils, HookedTransformer, ActivationCache, patching
 from transformer_lens.components import Embed, Unembed, LayerNorm, MLP
 from plotly_utils import imshow, line, scatter, bar
 import plotly.graph_objects as go
+import string
+from eindex import eindex
 purple = '\033[95m';blue = '\033[94m';cyan = '\033[96m';lime = '\033[92m';yellow = '\033[93m';red = "\033[38;5;196m";pink = "\033[38;5;206m";orange = "\033[38;5;202m";green = "\033[38;5;34m";gray = "\033[38;5;8m";bold = '\033[1m';underline = '\033[4m';endc = '\033[0m'
+mechinterp_dir = "C:\\Users\\ekhad\\Desktop\\wgmn\\mech"
+if mechinterp_dir not in sys.path: sys.path.append(mechinterp_dir)
 
 # function that takes a renderedhtml object, saves it to a temp file on the c drive and opens it in the browser
 def show(html):
