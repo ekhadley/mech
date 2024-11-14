@@ -102,6 +102,7 @@ def reorder_list_in_plotly_way(L: list, col_wrap: int):
     return L_new
 
 
+# yaxis_range = [lower, upper]
 def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
     '''
     Edit to this helper function, allowing it to take args in update_layout (e.g. yaxis_range).
