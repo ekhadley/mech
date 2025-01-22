@@ -401,18 +401,26 @@ def random_words(n_seqs, n_words, spaces=True):
         for i in range(n_words): words[:, i*4-1] = 26
     return words
 #%% how well does the model perform if we get rid of embeddings from the residual stream after attn0?
-model.reset_hooks()
-hookpoint = "blocks.0.hook_resid_post"
-hook = partial(replace_act_hook, new_act=cache['resid_post', 0] - cache['resid_pre', 0])
-no_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(hookpoint, hook)]).softmax(-1)
-random_seq_toks = random_words(1, n_words=8)
-hook = partial(replace_act_hook, new_act=cache['resid_post', 0] - cache['resid_pre', 0] + model.embed(random_seq_toks))
-rand_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(hookpoint, hook)]).softmax(-1)
-show_probs(no_emb_probs, 123, title="logits on dataset[123] after subtracting embeddings")
-print(f"mean prob on correct with embeddings subtracted: {no_emb_probs[bidx, :, dataset.labels].mean():.3f}")
-print(f"mean prob on correct with random embeddings in all (non-space) positions: {rand_emb_probs[bidx, :, dataset.labels].mean():.3f}")
-model.reset_hooks()
-# we see that the embedding is very necessary for attn1 to do its job. both kinds of ablations put ~0.15 prob on correct, when averaging over all sequence positions.
+def fuck_with_embeddings(act):
+    model.reset_hooks()
+    no_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(act, partial(replace_act_hook, new_act=cache[act] - cache["hook_embed"]))]).softmax(-1)
+    random_seq_toks = random_words(1, n_words=8)
+    rand_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(act, partial(replace_act_hook, new_act=cache[act] - cache["hook_embed"] + model.embed(random_seq_toks)))]).softmax(-1)
+    print(f"mean prob on correct with embeddings subtracted: {no_emb_probs[bidx, :, dataset.labels].mean():.3f}")
+    print(f"mean prob on correct with random embeddings in all (non-space) positions: {rand_emb_probs[bidx, :, dataset.labels].mean():.3f}")
+    model.reset_hooks()
+    return lines(
+        [mpc_by_seq_pos, rand_emb_probs[bidx, :, dataset.labels].mean(0), no_emb_probs[bidx, :, dataset.labels].mean(0)],
+        x=[f"{s}<br><sub>{i}</sub>" for i, s in enumerate(dataset.str_toks[0])],
+        title=f"MPC by sequence position when embedding directions are modified at '{act}'",
+        labels=["ablation", "scrambled embeddings", "subtracted embeddings"]
+    )
+fuck_with_embeddings("blocks.0.hook_resid_pre") # 0 performance. duh
+fuck_with_embeddings("blocks.0.hook_resid_post") # bad performance. about 0.5 avg over all posn, but rises over the sequence
+fuck_with_embeddings("blocks.1.hook_resid_post") # perfect performance, scrambling or subtracting
+# The takeaway is that embeddings are important to attn1 and totally unecessary to the unembed.
+
+# we see that in general
 #%% here we plot the similarity between different positional embeddings (which are normal learned embeddings with this model)
 pos_sims = t.zeros((seq_len, seq_len), device=device)
 for i in range(seq_len):
@@ -541,9 +549,6 @@ lines( # MPC by sequence position when each head's attention pattern is identity
 )
 attn1_ident_2nd_and_3rd_letter_mpc = (attn_ident_mpc_by_seq_pos[-1][1:32:4] + attn_ident_mpc_by_seq_pos[-1][2:32:4]).mean() * 0.5
 print(f"(mpc for second and last letters when both attn1 patterns are identity: {attn1_ident_2nd_and_3rd_letter_mpc.item():.3f}")
-#%% visualizing identity attn performance on various examples
-dataset_idx = 456
-show_probs(attn_ident_probs[-1], dataset_idx, title=f"performance on dataset[{dataset_idx}] when attn1 head patterns are identity")
 #%% we try masking the attention pattern of various heads to be only intra-word (between letters of the same word)
 intraword_mask = t.zeros((seq_len, seq_len), device=device, dtype=t.bool)
 for i in range(0, seq_len, 4):
@@ -563,42 +568,20 @@ for layer in range(2):
         intraword_logits.append(intraword_logit)
         intraword_caches.append(intraword_cache)
 attn0_intraword_logits, attn0_intraword_cache = get_masked_attn_scores_logits(~intraword_mask, layer=0)
-attn0_intraword_probs = attn0_intraword_logits.softmax(-1)
+attn0_intraword_mpc_bsp = attn0_intraword_logits.softmax(-1)[bidx, :, dataset.labels].mean(0)
 attn1_intraword_logits, attn1_intraword_cache = get_masked_attn_scores_logits(~intraword_mask, layer=1)
-attn1_intraword_probs = attn1_intraword_logits.softmax(-1)
-attn1_intraword_mpc_bsp = attn1_intraword_probs[bidx, :, dataset.labels].mean(0)
-
-for layer in range(2):
-    for head in range(2):
-        show_logits(intraword_logits[layer*2 + head], didx:=599, title=f"performance when h{layer}.{head} pattern is intraword only")
-show_logits(attn0_intraword_logits, didx, title=f"performance on dataset[{didx}] when attn0 patterns are intraword only")
-
-print(f"MPC under no ablation: {probs_correct.mean():.3f}")
-for layer in range(2):
-    for head in range(2):
-        print(f"MPC when h{layer}.{head} patterns are intraword only: {intraword_logits[layer*2 + head].softmax(-1)[bidx, :, dataset.labels].mean():.3f}")
-print(f"MPC when attn0 patterns are intraword only: {attn0_intraword_logits.softmax(-1)[bidx, :, dataset.labels].mean():.3f}")
-# we see that attn0 intraword ablations dont hurt the model much. With h0.0 and h0.1 ablated this way, the MPC is ~0.91, compared to 0.94 with no ablation.
-# It seems attn0's main job (as suggested by the attention patterns) is to move information between letters of the same word.
+attn1_intraword_mpc_bsp = attn1_intraword_logits.softmax(-1)[bidx, :, dataset.labels].mean(0)
 lines(
-    [probs[bidx, :, dataset.labels].mean(0), attn0_intraword_logits.softmax(-1)[bidx, :, dataset.labels].mean(0)],
+    [attn0_intraword_mpc_bsp, attn1_intraword_mpc_bsp],
     x=[f"{s}<br><sub>{i}</sub>" for i, s in enumerate(dataset.str_toks[0])],
-    title="MPC when attn0 patterns are intraword only",
-    labels=["original", "ablated"]
+    title="MPC by sequence position when attn layers have intraword patterns",
+    labels=["h0.0+h0.1", "h1.0+h1.1"]
 )
-#%% here we force the attn0 heads to be intraword and the attn1 heads to be identity
-model.reset_hooks()
-model.add_hook(f"blocks.0.attn.hook_attn_scores", partial(replace_attn_scores_hook, new_attn_scores = attn0_intraword_scores, head=None))
-model.add_hook(f"blocks.1.attn.hook_pattern", partial(replace_attn_pattern_hook, new_attn_pattern = eye, head=None))
-intra_ident_logits, intra_ident_cache = model.run_with_cache(dataset.toks)
-model.reset_hooks()
-
-show_mpc_by_seq_pos(intra_ident_logits, title="MPC by sequence position when attn0 is intraword and attn1 is identity")
-show_attn_heads(intra_ident_cache, dataset_idx)
-#%% visualizing the performance of the model when the attention patterns are intraword only
-dataset_idx = 36
-show_logits(intra_ident_logits, dataset_idx)
-
+# we see that the model does well with attn0 intraword ablated, except on first letters whihch is expected.
+# when attn1 is intraword, e see the model gets normal first word performance for the first 3 words then it
+# degrades. This is very likely due to the similarity of sequence position embeddings later in the sequence,
+# which was shown abnove. makes sense.
+    
 #%% here we make it so that the attn1 heads src from two selected sequence positions
 
 upper_indices = t.triu_indices(seq_len, seq_len, offset=1, device=device)
@@ -653,11 +636,11 @@ show_mpc_by_seq_pos(all_intra_logits, title="MPC by sequence position when all h
 
 # %% here we scramble the values of various activations along the batch dimension at particular sequence positions
 randperm = t.randperm(1000, device=device)
-dest_letter_idx = 2
-src_letter_idx = 2
+dest_letter_idx = 0
+src_letter_idx = 0
 
 head = None
-act = f"blocks.1.attn.hook_k"
+act = f"blocks.1.attn.hook_v"
 
 scrambled_act = cache[act].clone()
 if head is not None: scrambled_act[:, dest_letter_idx:32:4, head] = scrambled_act[randperm, src_letter_idx:32:4, head]
@@ -786,9 +769,11 @@ print(f"swapped logits: {sum(dest_probs_mpcs) / len(dest_probs_mpcs)}")
 # performance. this follows immediately
 
 # %% testing the 'attn0 makes bigram detection features out of z values on middle letter positions' hypothesis
-# here we gather literal trigrams and bigrams whose only possible shift value is the same as our trigram.
-# we patch between middle letters and examine mean prob on last letter on the trigram's original shift.
+# here we gather literal trigrams and bigrams with varying probabilities of having the same shift as the trigram.
+# we patch between middle letters and examine mean prob on middle and last letters to see if what matters is the
+# literal letters or the distribution of the bigram in the middle letter position.
 
+zzz = []
 def ctx_sens4(hookpoint, prop_min=0.0, prop_max=1.0, count_cutoff=10):
     src_words, dest_words, dest_labels = [], [], []
     words = [(w, s) for w, s in gram_freqs.items() if len(w)==3]
@@ -799,39 +784,52 @@ def ctx_sens4(hookpoint, prop_min=0.0, prop_max=1.0, count_cutoff=10):
             for bigram, bshifts in bigrams:
                 #prop = bshifts.count(wshift) / len(bshifts) 
                 prop = bshifts.count(wshifts[0]) / len(bshifts) 
-                if len(bshifts) > count_cutoff and bigram[0] != word[0] and bigram[1] != word[2]: # and occurrs >coutn_cutoff times and doesnt share any letters with the src word
+                if len(bshifts) > count_cutoff and bigram[0] != word[0] and bigram[1] != word[1]: # and occurrs >coutn_cutoff times and doesnt share any letters with the src word
                     if prop >= prop_min and prop <= prop_max: # and the proportion of the occurrences of the bigram shift distn is within given bounds
                         src_words.append(bigram)
                         dest_words.append(word)
                         dest_labels.append(wshifts[0])
+    if (nseq := len(src_words)) > 5000:
+        sampled_indices = t.randperm(nseq)[:5000]
+        src_words = [src_words[i] for i in sampled_indices]
+        dest_words = [dest_words[i] for i in sampled_indices]
+        dest_labels = [dest_labels[i] for i in sampled_indices]
     src_toks, dest_toks = tokenize(src_words), tokenize(dest_words)
     dest_labels = t.tensor(dest_labels, device=device, dtype=t.int32)
     assert src_toks.numel() > 0, f"{bold + red}no matching words found{endc}"
-
+    
     model.reset_hooks()
     src_logits, src_cache = model.run_with_cache(src_toks)
     model.add_hook(hookpoint, partial(replace_act_hook, new_act=src_cache[hookpoint][:, 1], seq_pos=1)) # patching only between middle letters
+    #model.add_hook("blocks.1.attn.hook_k", partial(replace_act_hook, new_act=src_cache["blocks.1.attn.hook_k"][:, 1], seq_pos=1)) # patching only between middle letters
     dest_logits, dest_cache = model.run_with_cache(dest_toks)
     model.reset_hooks()
-    del src_cache, src_logits, src_toks, dest_toks
-    return dest_logits, dest_cache, src_words, dest_words, dest_labels
+    zzz.append(src_logits.softmax(-1)[t.arange(src_toks.shape[0]), 1, dest_labels].mean().item())
+    del src_cache, src_logits, src_toks, dest_toks, dest_cache
+    return dest_logits, src_words, dest_words, dest_labels
 
-#dest_logits, dest_cache, src_words, dest_words, dest_labels = ctx_sens4("blocks.1.attn.hook_v", prop_min=1.0, prop_max=1.0)
-#dest_probs = dest_logits.softmax(-1)
-#dest_probs_mpc = dest_probs[t.arange(len(src_words)), -1, dest_labels]
+mpc_seq_pos = 1
+act = "blocks.1.hook_attn_out"
+scores = []
+for prop in trange(12):
+    dest_logits, src_words, dest_words, dest_labels = ctx_sens4(act, prop_min=(prop-1)/10, prop_max=prop/10)
+    dest_probs = dest_logits.softmax(-1)
+    dest_probs_mpc = dest_probs[t.arange(len(src_words)), mpc_seq_pos, dest_labels]
+    scores.append(dest_probs_mpc.mean().item())
+lines(
+    [zzz, scores],
+    x=[f"{(i-1)/10}-{i/10}" for i in range(12)],
+    labels=["original bigram mpc", "patched bigram mpc"],
+)
 
-#print(f"mpc after patching: {dest_probs_mpc.mean().item():.3f}")
-#dest_probs_mpc_sorted = t.sort(dest_probs_mpc, descending=True)
-#src_word_freq_sort = sorted([i for i in range(len(src_words))], key=lambda i: len(gram_freqs[src_words[i]]), reverse=True)
-#dest_word_freq_sort = sorted([i for i in range(len(dest_words))], key=lambda i: len(gram_freqs[dest_words[i]]), reverse=True)
-
-mpc_seq_pos = 2
+#%%
+mpc_seq_pos = 1
 acts = ["blocks.0.hook_attn_out", "blocks.0.hook_resid_post", "blocks.1.attn.hook_v", "blocks.1.hook_resid_post"]
 scores = [[] for _ in acts]
-for i, act in enumerate(acts):
+for i in trange(len(acts)):
+    act = acts[i]
     for prop in range(12):
-        #dest_logits, dest_cache, src_words, dest_words, dest_labels = ctx_sens4(act, prop_min=(prop_max-1)/10, prop_max=prop_max/10)
-        dest_logits, dest_cache, src_words, dest_words, dest_labels = ctx_sens4(act, prop_min=(prop-1)/10, prop_max=prop/10)
+        dest_logits, src_words, dest_words, dest_labels = ctx_sens4(act, prop_min=(prop-1)/10, prop_max=prop/10)
         dest_probs = dest_logits.softmax(-1)
         dest_probs_mpc = dest_probs[t.arange(len(src_words)), mpc_seq_pos, dest_labels]
         scores[i].append(dest_probs_mpc.mean().item())
@@ -845,15 +843,38 @@ lines(
 )
 
 # results:
-# We patch using 4 different activations. our dest sequences are 3 letter sequences who only have one possible shift value.
-# Our src sequences are birgams with no shared characters with the dest words' first and last letters. For each dest word,
+# We patch using 4 different activations. our dest sequences are 3 letter sequences who only have one possible shift value, but adds its modified output to the original embedding in that seqeunce position right before the
+# unembed.
+# Our src sequences are bigrams with no shared characters with the dest words' first and last letters. For each dest word,
 # we filter the bigrams by those which only have a certain probability of occurring as the shift of the dest word.
-# We look at the mean prob on the 
+# We look at the mpc for both middle letters (the patched position) and last letters.
+# Basically by patching in things downstream of attn0, based on the mpc on the patched position and later, we can figure
+# out what about the input matters to the components downstream. For example, if we patch in attn_out and find that the
+# third letter position gets high MPC for giveaway bigrams, it means that, despite attn1 attending between a normal sequence
+# position value and patched one, it means that despite the literals from which attn0's output was formed, the thing it produced
+# still correctly composes inside attn1 with the last letter position to form a uinfied prediction. In other words, if the
+# model is not impacted by patching after attn0 between sequences with the same distn but different literals, it means that
+# attn0's output does not encode literal token information, but distribution information, to the extent that these are not the
+# same info. (or it at least means that the info attn1 cares about from attn0 is not the literal token info, but i beleive attn0
+# basically does nothing but pass info to attn1)
+
+# middle letter mpc conclusions:
+# patching with 'blocks.0.hook_resid_post' or 'blocks.1.hook_resid_post' show basically unablated performance for the middle
+# letter. using attn1 values or attn0 output shows much worse performance. What are the differences between these patches and
+# what does the discrepancy tell us? One difference is that the first two actually modify the information in the residual stream
+# aned not just changing what gets added to it. However, patching at attn1 values means the input to the attn1 values are the
+# same as for the src bigram, but adds its modified output to the original embedding in that seqeunce position right before the
+# unembed. We know previously that if all we do is fuck with the embeddings before the unembed we get perfectly fine performance.
+# The only difference in that patch then is the effect of having keys and queries mistmatched (where by mistmatched i mean not
+# matching between the dest and src sequence), and a mistmatched first letter. By additionally patching in keys and by only
+# patching between sequences where the first letters are the same, we can recover basically all the performance. This tells us
+# that 
 
 #%% how are attn1 heads different from eachother?
 # based on the attention scores for each head:
 # h1.0 attends to last letters (and the first letter before there is a last letter)
 # h1.1 attends primarily to the second letter, and half as much to alst letters.
+
 
 # With the understanding that attn0 is creating bigram detection features in the middle letter position, what would
 # the different attn1 heads be doing? We know that one/both attn1 head is combining the bigram detection feature with
@@ -862,7 +883,7 @@ lines(
 # it is the head that is most interested in the second letter.
 
 # We attempt to test the theory that h1.1 is primarily reponsible for outputting the distribution of the bigram feature
-# computed by attn0. We do this by scrambling the attn1 values for each head
+# computed by attn0. We do this by scrambling the attn1 values for each head 
 
 dest_letter_idx = 5
 src_letter_idx = 1
@@ -898,3 +919,23 @@ lines(
 # We get perfect performance if we use 'blocks.0.hook_reisd_post' and no performance when we do the same for 'blocks.0.hook_attn_out'. 
 # The relative patchability of these activations suggest that the embeddings before and after attn1 are relevant for predicting middle letter positions,
 # unlike in bigram->trigram middle letter patching show above where saw high patchability using blocks.0.hook_attn_out, meaning 
+
+#%%
+
+hookpoint = "blocks.1.hook_resid_post"
+
+model.reset_hooks()
+no_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(hookpoint, partial(replace_act_hook, new_act=cache['resid_post', 0] - cache['resid_pre', 0]))]).softmax(-1)
+
+random_seq_toks = random_words(1, n_words=8)
+rand_emb_probs = model.run_with_hooks(dataset.toks, fwd_hooks=[(hookpoint, partial(replace_act_hook, new_act=cache['resid_post', 0] - cache['resid_pre', 0] + model.embed(random_seq_toks)))]).softmax(-1)
+
+print(f"mean prob on correct with embeddings subtracted: {no_emb_probs[bidx, :, dataset.labels].mean():.3f}")
+print(f"mean prob on correct with random embeddings in all (non-space) positions: {rand_emb_probs[bidx, :, dataset.labels].mean():.3f}")
+
+lines(
+    [mpc_by_seq_pos, rand_emb_probs[bidx, :, dataset.labels].mean(0), no_emb_probs[bidx, :, dataset.labels].mean(0)],
+    x=[f"{s}<br><sub>{i}</sub>" for i, s in enumerate(dataset.str_toks[0])],
+    title=f"MPC by sequence position when embeddings are subtracted from '{hookpoint}'",
+    labels=["unablated", "scrambled embeddings", "subtracted embeddings"]
+)
