@@ -14,7 +14,7 @@
 - The idea of tihnking tokens is to allow them to discover and learn arbitrary length algorithms to apply to the problems present in NTP.
 - The way chat models work is that they are originally trained to predict, then we set up the prompt so that their job is to predict the outputs of a character who happens to be a helpful AI assistantin conversation with a curious user. This can be done with just prompting but improved via fine tuning. The think out loud strategy allows the model to imitate the outputs of a human reasoning out loud, but there is evidence that the model is doing things somewhat different from what it appears. (see research on perturbing chains of thought and observing curiously unaffected final answers)
 - Doing rl on chain of thought is hard (but is what openai's o-models are doing and its clearly working), but doing rl on next-token prediction is easy.
-- I think it's plausible that this, or something like it, is actually what openai's o-models are doing behind the scenes. Having 'thinking' tokens whcih dont meaningfully translate to textual tokens could be why the o models output summaries of their thought process instead of the original tihng. but it could also be to hide whatever thinking strategies/thought processes theyh ave trained the model to use.
+- I think it's plausible that this, or something like it, is actually what openai's o-models are doing behind the scenes. Having 'thinking' tokens whcih dont meaningfully translate to textual tokens could be why the o models output summaries of their thought process instead of the original tihng. but it could also be to hide whatever thinking strategies/thought processes they have trained the model to use.
 - There are endless variations to this theme. You could have a multihead model, where one thinks and one speaks, or you could expand the vocab of a pretrained model and fine tune it to use the invisible tokens, etc. (I would guess openai does this last one since pretraining via autoregression is very not parallelizable)
 
 # There are many methods of circuit discovery now. What do we do with the circuits
@@ -25,6 +25,14 @@
 - sounds pretty hard when you put it like that.
 - but something in the vein of 'lets use all these circuits to do something actually useful/make models safer permanently or during inference'
 
+# Examine yes/no arithmetic/simple math problems.
+- example: "a 6 pack of coke costs $10, a 4 pack costs $3.5. is the 6 pack a better deal?"
+- different components will have different contributions to the yes/no logits.
+- Examine different layers/components, seeing what direction each layer contributes on the yes-no spectrum.
+- Change 'coke' in the example to 'pepsi'. are the same layers doing the same thing?
+- I had this idea a long time ago and there was a specific angle i found really interesting but i cant remember it now...
+
 # general vein: doing automated circuit discovery during pretraining
 
-# general vein: doing circuit discovery on models before/after some fine tuning and seeing if we can find ubiquitious differences, potentially relating the different circuits to the kind of fine tuning we did.
+# general vein: doing circuit discovery on models before/after some fine tuning
+- try to see if we can find ubiquitious differences, potentially relating the different circuits to the kind of fine tuning we did.
