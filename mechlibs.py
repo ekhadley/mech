@@ -1,7 +1,8 @@
-import os#; os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+import os
 import re
-import einops
+import platform
 import sys
+import einops
 from uuid import uuid4
 import functools
 from functools import partial
@@ -19,9 +20,11 @@ from rich import print as rprint
 import circuitsvis as cv
 import pandas as pd
 from transformer_lens.hook_points import HookPoint
+# sentencepiece failed to build for me on arch (btw). can be compiled from source on linux as insrtructed here:
+# https://github.com/google/sentencepiece/tree/master/python
 from transformer_lens import utils, HookedTransformer, ActivationCache, patching
 from transformer_lens.components import Embed, Unembed, LayerNorm, MLP
-from plotly_utils import imshow, line, scatter, bar
+from plotly_utils import imshow, line, bar#, scatter
 import plotly.graph_objects as go
 import string
 from eindex import eindex
@@ -38,7 +41,12 @@ gray = "\033[38;5;8m"
 bold = '\033[1m'
 underline = '\033[4m'
 endc = '\033[0m'
-mechinterp_dir = "C:\\Users\\ekhad\\Desktop\\wgmn\\mech"
+
+if (system_name := platform.system()) == "Windows":
+    mechinterp_dir = "C:\\Users\\ekhad\\Desktop\\wgmn\\mech"
+elif system_name == "Linux":
+    mechinterp_dir = "~\\wgmn\\mech"
+
 if mechinterp_dir not in sys.path: sys.path.append(mechinterp_dir)
 
 def scatter(x, y, title="", xaxis="", yaxis="", colorbar_title="", **kwargs):

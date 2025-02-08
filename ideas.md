@@ -25,14 +25,19 @@
 - sounds pretty hard when you put it like that.
 - but something in the vein of 'lets use all these circuits to do something actually useful/make models safer permanently or during inference'
 
-# Examine yes/no arithmetic/simple math problems.
+# Examine yes/no arithmetic/simple math problems. what does each layer contribute to the answer across different problems.
 - example: "a 6 pack of coke costs $10, a 4 pack costs $3.5. is the 6 pack a better deal?"
 - different components will have different contributions to the yes/no logits.
 - Examine different layers/components, seeing what direction each layer contributes on the yes-no spectrum.
 - Change 'coke' in the example to 'pepsi'. are the same layers doing the same thing?
 - I had this idea a long time ago and there was a specific angle i found really interesting but i cant remember it now...
 
-# general vein: doing automated circuit discovery during pretraining
+# general vein: mechinterp on reasoning models
+- for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this?
+- A reasoning model also has to choose when to stop thinking and start 'speaking'. Can the responsible circuit be discovered?   
+
+# general vein: doing automated circuit discovery during pretraining. what changes over time?
 
 # general vein: doing circuit discovery on models before/after some fine tuning
 - try to see if we can find ubiquitious differences, potentially relating the different circuits to the kind of fine tuning we did.
+- mechinterp on anthropics 'model organisms of misalignment' models? i dont see papers having done this, idk why. is it a bad idea?

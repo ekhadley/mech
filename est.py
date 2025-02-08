@@ -1,10 +1,9 @@
 #%%
-import torch as t
-from tqdm import trange
-#from mechlibs import endc, red, blue
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from mechlibs import *
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+print(bold, pink, device, endc)
 
 tokenizer = AutoTokenizer.from_pretrained("EleutherAI/pythia-2.8b")
 def tokenize(inp):
