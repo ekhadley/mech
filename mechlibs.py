@@ -49,6 +49,21 @@ elif system_name == "Linux":
 
 if mechinterp_dir not in sys.path: sys.path.append(mechinterp_dir)
 
+def all_attn_patterns(cache):
+    nlayers = max([int(e[7]) for e in cache.keys() if 'blocks' in e])
+    return t.cat([cache['pattern', layer] for layer in range(nlayers+1)], dim=1)
+
+def show_attn_heads(cache, dataset_idx, dataset=None):
+    patterns = all_attn_patterns(cache=cache)[dataset_idx]
+    n_layers = max([int(e[7]) for e in cache.keys() if 'blocks' in e])
+    n_heads = cache['k', 0].shape[2]
+    return cv.attention.attention_heads(
+        patterns,
+        attention_head_names=[f"head{i}.{j}" for i in range(n_layers+1) for j in range(n_heads+1)],
+        tokens=dataset.str_toks[dataset_idx] if dataset is not None else [str(i) for i in range(patterns.shape[0])],
+    )
+
+
 def scatter(x, y, title="", xaxis="", yaxis="", colorbar_title="", **kwargs):
     fig = px.scatter(x=utils.to_numpy(x.flatten()), y=utils.to_numpy(y.flatten()), title=title, labels={"color": colorbar_title}, **kwargs)
     fig.update_layout(xaxis_title=xaxis, yaxis_title=yaxis)
