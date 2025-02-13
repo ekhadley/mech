@@ -27,6 +27,7 @@ from transformer_lens.components import Embed, Unembed, LayerNorm, MLP
 from plotly_utils import imshow, line, bar#, scatter
 import plotly.graph_objects as go
 import string
+import random
 from eindex import eindex
 purple = '\033[95m'
 blue = '\033[94m'

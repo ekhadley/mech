@@ -37,7 +37,7 @@ state_dict = model.center_unembed(state_dict)
 state_dict = model.fold_layer_norm(state_dict)
 state_dict = model.fold_value_biases(state_dict)
 n_layers = 1
-n_heads = 1
+n_heads = 2
 model.load_state_dict(state_dict, strict=False)
 print(model)
 print(f"vocab size: {model.W_E.shape[0]}")
@@ -108,7 +108,7 @@ def show_heads_on_input(patterns, tokens=None):
         attention_head_names=[f"head{i}.{j}" for i in range(n_layers) for j in range(n_heads)],
         tokens=toks,
     )
-def show_probs(logits, toks):
+def show_probs(logits: t.Tensor, toks: t.Tensor):
     logprobs = logits.squeeze()[dataset.list_len:-1, :].log_softmax(-1) # [batch seq_len vocab_out]
     probs = logprobs.softmax(-1)
     strtoks = to_str_toks(toks)
@@ -142,16 +142,63 @@ def show_probs(logits, toks):
 # we first take a sum along rows to get indices: m.sum(dim=-1) = [3, 0, 2, 1]. so the index of the
 # first element (9) is 3. index of the 3 is 0, etc.
 #
-# The way this model specifically works is that it sees the full list, then a separator token, and is
-# trained to predict the tokens that come after the sep token in sorted order.
-# lets go step by step. you've just seen the separator token. your prediction should be the first number
-# in the sorted list. what do you need to know? for the first number, you need to know the smallest number
-# in the input list. This would be the one with the smallest number of true 'greater than' operations
-# in the comparison table. Now we predict the second number. What do we need to know? I'd guess that the
-# model looks for the smallest number that has not already been output.
+# The way this model specifically works is that it sees the full list, then a separator token. After the
+# separator token, is is autoregressively trained to predict the next token in the sorted list. (meaning
+# given all the unsorted tokens and the previous sorted token, predict the next sorted token).
+
+# Here is a different algorithm: the first element of the sorted list is the smallest element. Then if you
+# put the closest number to the previous one which has not already been placed, you get an ascending
+# sorted list (ignoring duplicates).
+
+# Ok just found out that the lists the model was trained on contain all unique numbers, so no duplicates.
+# This makes the 'closest number not already placed' heuristic seem pretty good.
+# As a first guess, the model might just be boosting the logits for tokens which are close to the current
+# AND come before the sep token, and reducing the logits for any token after the sep token.
+# Oh and the model could just assign the 'sep' token to act like a low value, so that when the model is
+# on the sep token, and looks for a token close in value to the current token, it will look for low values.
+# So let's test the hypothesis: what would we be likely to observe in the attention patterns if this algorithm is being implemented?
+# - We might see that the model gets confused when the next largest token is much larger than the current.
+#    - specifically since this algorithm mostly happens in the QK circuit, we should see that tokens will src from the correct next token less when the next token is much larger.
+# - If the sep token is being given a semantically low value like close to 0, we should see low tokens src from sep more than high ones
+# - We would expect the model to attend to all the post-sep tokens, as well as selectively attend to the pre-sep tokens based on their value and the current token's.
+# - we would expect that when the head attends to post-sep tokens, that the logits are all negative, becuase the only reason it would attend there is to inhibit duplicates.
+# - we would expect that when the head attends to pre-sep tokens, that the logits are all positive, because the only reason it would attend there is to boost the correct next token.
+# - If we take the embeddings and/or the Q, K values for all the tokens and dot them together ot get a similaaity matrix, we should expect the values to be proportional (?) to the distance to the main diagonal
+
+#%% attention patterns and logits on a sequence with a large jump
+jump_seq = [1, 2, 3, 4, 5, 45, 46, 47, 48, 49]
+random.shuffle(jump_seq)
+jump_seq_toks = list_to_toks(jump_seq)
+jump_seq_logits, jump_seq_cache = model.run_with_cache(jump_seq_toks)
+show_probs(jump_seq_logits, jump_seq_toks)
+show_heads_on_input(jump_seq_cache['pattern', 0], jump_seq_toks)
+# The model does get confused when the sequence contains a large jump, for just the index of the jump.
+# After sep, h0.1 sources strongly from pre-sep tokens whose value is greater than the current one. It
+# puts the largest weight on the correct next token, and decaying less weight for others as they get larger.
+# Once we get to 5, where the next correct token is 45, we dont attend at all to any of the large pre-sep
+# tokens. We instead attend mostly to the sep token itself, a bit to the current token from before the 'sep',
+# and a bit to the pre-sep tokens immediately smaller than itself.
+# This is strong evidence that h0.1 is trying to attend to tokens close in value to ourselves, and failing. It
+# also makes sense that we would attend to SEP from 5 as opposed to 45, under the hypothesis that the sep token
+# is being given a low value, numerically close to 0.
+# However, h0.1 also definitely attends more to tokens whcih are greater than the current, so its not just as simple
+# as 'source from the closest token'. The fact that 5 attends to sep so strongly is somewhat strange in light of this.
+
+# The pattern of h0.0 is quite different. attends strongly to 1 on sep and the first token of the sorted list. But from
+# tokens [2-5] is attends strongly to the current token, decaying as we go backwards in the sequence. So mostly on
+# the current token, some on the token behind, less on the token behind that.
+
+# The patterns of h0.0 and h0.1 are visually quite different. After the sep token, H0.1 attends very little to post-sep tokens, whereas h0.0
+# attends there strongly.
+# H0.1 seems to be the 'what is next' head, and h0.0 seems to be the 'what isnt next' (as in what has already occurrsed in the sorted list) head.
 #%%
-seq_toks = list_to_toks([50, 5, 40, 4, 30, 3, 20, 2, 10, 1])
-seq_logits, seq_cache = model.run_with_cache(seq_toks)
-show_probs(seq_logits, seq_toks)
-show_heads_on_input(seq_cache['pattern', 0], seq_toks)
+
+embed_normed = model.W_E / model.W_E.norm(dim=-1, keepdim=True)
+imshow(einops.einsum(embed_normed, embed_normed, "voc1 d_model, voc2 d_model -> voc1 voc2"), title="Similarity matrix of embeddings")
+
+#%%
+
+posembed_normed = model.W_E_pos / model.W_E_pos.norm(dim=-1, keepdim=True)
+imshow(einops.einsum(posembed_normed, posembed_normed, "voc1 d_model, voc2 d_model -> voc1 voc2"), title="Similarity matrix of posembeddings")
+
 #%%
