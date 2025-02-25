@@ -1,12 +1,12 @@
 # model with invisible 'thinking' tokens trained via rl, with rewards based on supervised token accuracy
 - [thinktoks](https://github.com/ekhadley/thinktokens) was a project I started but never saw results on due to training code being very complicated.
-- during ordinary pretraining, the model autoregressively outputs tokens on which we calculate crossentropy against the correct token for each sequence position.
+- during ordinary pretraining , the model autoregressively outputs tokens on which we calculate crossentropy against the correct token for each sequence position.
 - the idea was to add a bunch of extra tokens to the models vocab.
-- these tokens would be *ignored* when they are output during training. We continue spitting out tokens until we have produced as many 'real' tokens as were in the output sequence, ignoring all the extra 'thinking' tokens.
+- these tokens would be *ignored* when they are output during training(when calculating the loss that is). We continue spitting out tokens until we have produced as many 'real' tokens as were in the output sequence, ignoring all the extra 'thinking' tokens.
 - During training, the model will receive no supervised feedback whatsoever when a thinking token is output.
 - Instead, we include another loss term to the total loss for a sequence. The loss of a particular invisible token is a function of the ordinary, supervised loss for all the ordinary tokens which were output later.
-- So the reward signal for normal tokens is simply to correctly predict the next token, like a normal model, except there are invisible tokens in the sequence which weren't part of the input sequence.
-- The reward signal for the invisible tokens is the loss of all following real tokens.
+- So the reward signal for normal tokens is simply to correctly predict the next token, like a normal model, except there are invisible tokens in the context which weren't part of the input sequence, but can be attended to for next token prediction.
+- The reward signal for the invisible tokens is a function of the loss of all following real tokens.
 - So we encourage the model to output normal tokens which are the same as the actual next token, and to output invisible tokens which increase the chance of outputting the correct prediction for the next token.
 - It would also be probably necessary to apply a fixed cost for outputting invisible tokens to get it to eventually output real token predictions instead of 'thinking forever.'
 - The idea is to allow the model to think, but not out loud. To be able to output intermediate results of unconstrained semantic meaning, and to do this for as many tokens as required.
