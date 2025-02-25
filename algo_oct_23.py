@@ -313,12 +313,12 @@ show_logits(
 #show_logits(
 #    unembed(model.blocks[0].attn.b_O.repeat(21, 1)),
 #    dataset.toks[dataset_idx],
-#    probs=False,
+#    probs=False
 #    title=f"attn b_O unembedded"
 #)
 
 show_logits(
-    unembed(cache['blocks.0.hook_resid_pre'][dataset_idx]),
+    unembed(cache['embed'][dataset_idx]),
     dataset.toks[dataset_idx],
     probs=False,
     title=f"pre-attn residual unembedded on dataset idx {dataset_idx}"
@@ -341,3 +341,5 @@ posemb = cache['hook_pos_embed']
 t.testing.assert_close(pre, emb + posemb)
 
 #%%
+
+imshow(unembed(model.W_E + model.W_E_pos[12]))

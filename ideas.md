@@ -14,15 +14,15 @@
 - The idea of tihnking tokens is to allow them to discover and learn arbitrary length algorithms to apply to the problems present in NTP.
 - The way chat models work is that they are originally trained to predict, then we set up the prompt so that their job is to predict the outputs of a character who happens to be a helpful AI assistantin conversation with a curious user. This can be done with just prompting but improved via fine tuning. The think out loud strategy allows the model to imitate the outputs of a human reasoning out loud, but there is evidence that the model is doing things somewhat different from what it appears. (see research on perturbing chains of thought and observing curiously unaffected final answers)
 - Doing rl on chain of thought is hard (but is what openai's o-models are doing and its clearly working), but doing rl on next-token prediction is easy.
-- I think it's plausible that this, or something like it, is actually what openai's o-models are doing behind the scenes. Having 'thinking' tokens whcih dont meaningfully translate to textual tokens could be why the o models output summaries of their thought process instead of the original tihng. but it could also be to hide whatever thinking strategies/thought processes they have trained the model to use.
-- There are endless variations to this theme. You could have a multihead model, where one thinks and one speaks, or you could expand the vocab of a pretrained model and fine tune it vis just the rl to use the invisible tokens, etc. (I would guess openai does this last one since pretraining via autoregression is very not parallelizable) (actually since deepseek r1 is just doing thinking inside of <think> </think> tags, I would guess that's also what the o models do)
-- thought: it's easier to do alternating next token prediction, and think-token rl training rather than both simultaneously.
+- thought: it's easier to do alternating next token prediction, and think-token rl training rather than both simultaneously. 
+- The current generation of reasoning models are doing reasoning using invisible tokens trained via rl. The difference is that they are trained to reason in post treaining, and using normal tokens which are just not checked. This makes the largest issue finding supervision for the rl, which is why the o-models excel in math and code, where answers are verifiable and synthesizable.
+- This would allow models to learn to reason during pretraining and all other places, becuase the rl reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
 
 # circuit mining via unsupervised component importance clustering
 - take some set of inputs and model predictions.
 - Create some set of metrics to establish which components of the model are important for a particular token prediction.
 - Do unsupervised clustering to find sets of sequences which use a similair subset of model components to make
-a prediction
+a prediction.
 - Then zoom into some particular cluster and repeat, finding clusters of tightly related components within that data subset.
 - This would allow us to zoom in to particular component groups which specialize for performing certain tasks.
 - Assuming we are able to find nice identifiable clusters, this would show something akin to 'feature splitting' from
@@ -34,8 +34,6 @@ for converting between currencies of different countries, one for calculating pe
 - Then if one wanted to find the circuit responsible for some task, they would just have to produce a dataset which
 demonstrates the capability, and we could use the circuit-pedia to identify which cluster the dataset's examples
 are closest to.
-
-# simple idea: training encoder-decoder transformers to decompile program binaries
 
 # There are many methods of circuit discovery now. What do we do with the circuits
 - Has there been any work in actually using discovered circuits to 'fix' or contrain models?
@@ -51,6 +49,11 @@ are closest to.
 - Examine different layers/components, seeing what direction each layer contributes on the yes-no spectrum.
 - Change 'coke' in the example to 'pepsi'. are the same layers doing the same thing?
 - I had this idea a long time ago and there was a specific angle i found really interesting but i cant remember it now...
+
+# training encoder-decoder transformers to decompile program binaries
+- while attending to the whole input binary file, autoregressively output the input file.
+- For training data, I imagine we could use packages available via package managers. These often work by downloading source code from github or similair and then compiling locally.
+- This gives us convenient access to a huge database real world programs in both source code and compiled format.
 
 # general vein: mechinterp on reasoning models
 - for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this?
