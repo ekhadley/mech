@@ -1,5 +1,5 @@
 # model with invisible 'thinking' tokens trained via rl, with rewards based on supervised token accuracy
-- [thinktoks](https://githubcom/ekhadley/thinktokens) was a project I started but never saw results on due to training code being very complicated.
+- [thinktoks](https://github.com/ekhadley/thinktokens) was a project I started but never saw results on due to training code being very complicated.
 - during ordinary pretraining, the model autoregressively outputs tokens on which we calculate crossentropy against the correct token for each sequence position.
 - the idea was to add a bunch of extra tokens to the models vocab.
 - these tokens would be *ignored* when they are output during training. We continue spitting out tokens until we have produced as many 'real' tokens as were in the output sequence, ignoring all the extra 'thinking' tokens.
