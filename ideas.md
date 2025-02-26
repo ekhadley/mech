@@ -49,9 +49,11 @@ for converting between currencies of different countries, one for calculating pe
 - This is only possible because of the yes/no binary answer, meaning the value of interest for each component is just a scalar, as opposed to the usual mechinterp challenge of trying to decipher what is the meaning of the gigantic vector that layer xyz just added into the residual stream and got read in by layer abc ...
 
 # training transformers to decompile program binaries
-- while attending to the whole input binary file, autoregressively output the input file.
+- while attending to the whole input binary file, autoregressively output the source code.
 - For training data, I imagine we could use packages available via package managers (pip, pacman, apt, flatpak). These often work by downloading source code from github or similair and then compiling locally.
 - This gives us convenient access to a huge database real world programs in both source code and compiled format.
+- probably would want to output a serialized AST or something instead of normally tokenized text.
+- But it would be cool to see if it can figure out likely variable names and stuff.
 
 # general vein: mechinterp on reasoning models
 - for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this?
