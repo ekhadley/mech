@@ -56,12 +56,12 @@ for converting between currencies of different countries, one for calculating pe
 - But it would be cool to see if it can figure out likely variable names and stuff.
 
 # general vein: mechinterp on reasoning models
-- for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this?
-- A reasoning model also has to choose when to stop thinking and start 'speaking'. Can the responsible circuit be discovered? Can it be intervened to make a model think more/less than it normally would?
+- for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
+- A reasoning model also has to choose when to stop thinking and start 'speaking'. Can the responsible circuit be discovered? Can it be intervened upon to make a model think more/less than it normally would?
 
 # general vein: doing automated circuit discovery during pretraining. what changes over time?
 
 # general vein: doing circuit discovery on models before/after some fine tuning
 - try to see if we can find ubiquitious differences, potentially relating the different circuits to the kind of fine tuning we did.
 - some circuits are probably being created during fine tuning. Do any go away, or are they just suppressed?
-- mechinterp on anthropics 'model organisms of misalignment' models? i dont see papers having done this, idk why. is it a bad idea?
+- mechinterp on anthropics 'model organisms of misalignment' models? i dont see anyone having done this, idk why it seems kind of obvious. is it a bad idea?
