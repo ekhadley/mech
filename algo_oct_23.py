@@ -68,6 +68,9 @@ print(f"Average cross entropy loss: {avg_cross_entropy_loss:.3f}")
 print(f"Mean probability on correct label: {probs_correct.mean():.3f}")
 print(f"Median probability on correct label: {probs_correct.median():.3f}")
 print(f"Min probability on correct label: {probs_correct.min():.3f}")
+
+attn = model.blocks[0].attn
+
 #%%
 def show(batch_idx: int, dataset=dataset, probs=True):
     logits: Tensor = model(dataset.toks)[:, dataset.list_len:-1, :]
@@ -109,7 +112,9 @@ def show_heads_on_input(patterns, tokens=None):
         tokens=toks,
     )
 def show_logits(logits: t.Tensor, toks: t.Tensor, probs=True, title=None):
-    logits = logits.squeeze()[dataset.list_len:-1, :]
+    logits.squeeze_()
+    if logits.shape[0] > dataset.list_len:
+        logits = logits[dataset.list_len:-1, :]
     if probs:
         logits = logits.log_softmax(-1).softmax(-1)
     strtoks = to_str_toks(toks)
@@ -261,7 +266,7 @@ imshow(sim_matrix[1], title="head 0.1 (W_E @ W_Q) @ (W_E @ W_K)^T (no positional
 # larger than the current, it should never attend to a pre-sep token which is already in the sorted list portion.
 
 Q_seq_pos = 11
-K_seq_pos = 11
+K_seq_pos = 0
 Q_plus_pos = einops.einsum(model.W_E + model.W_E_pos[Q_seq_pos], model.W_Q.squeeze(), "d_vocab d_model, n_heads d_model d_head -> d_vocab n_heads d_head")
 K_plus_pos = einops.einsum(model.W_E + model.W_E_pos[K_seq_pos], model.W_K.squeeze(), "d_vocab d_model, n_heads d_model d_head -> d_vocab n_heads d_head")
 
@@ -291,55 +296,95 @@ def unembed(act, norm=True) -> t.Tensor:
     return einops.einsum(act, model.W_U, "... seq d_model, d_model vocab -> ... seq vocab") + model.b_U
 
 #%% unembedding various stuff
-# head output unembed predicitons. Assuming the heads are just boosting logits for repeating pre-sep tokens whcih are near in value but larger
+
+imshow(unembed(embed_normed, norm=True), title='unembedding the embedding matrix') 
+# The main feature of unembedding the embeddings/embeddings + posembed is that the current token has strongly negative logits, for obvious reasons.
+# logits below the main diagonal are more negative than above on average, but not by much. Idk why its not more seems like a good bet.
+
+#V_normed = (model.W_V / model.W_V.norm(dim=-1, keepdim=True)).squeeze()
+#attn_out_normed = (model.W_O / model.W_O.norm(dim=-1, keepdim=True)).squeeze()
+#unembed_normed = model.W_U / model.W_U.norm(dim=1, keepdim=True) 
+#OV = einops.einsum(V_normed, attn_out_normed, "n_heads d_model_v d_head, n_heads d_head d_model_o -> n_heads d_model_v d_model_o")
+#EOV = einops.einsum(embed_normed, OV, "voc d_model_v, n_heads d_model_v d_model_o -> n_heads voc d_model_o")
+#EVOU = einops.einsum(EOV, unembed_normed, "n_heads voc_E d_model, d_model voc_U -> n_heads voc_E voc_U")
+#imshow(EVOU[0], title="head 0.0 embed -> OV -> unembed circuit")
+#imshow(EVOU[1], title="head 0.1 embed -> OV -> unembed circuit")
+# im dumb.
+
+#%%
+# head output unembed predicitons. Assuming the heads are just boosting logits for repeating pre-sep tokens which are near in value but larger
 # than the current, we should see decaying positive logits, starting on the correct token and falling off as the tokens get larger.
+
+# results: we do not see that with either head.
 head = 0
-dataset_idx = 123
+dataset_idx = 6
 show_logits(
-    unembed(cache["blocks.0.attn.hook_result"][dataset_idx, :, head]),
+    unembed(cache["blocks.0.attn.hook_result"][dataset_idx, :, head] + model.blocks[0].attn.b_O),
     dataset.toks[dataset_idx],
     probs=False,
     title=f"h0.{head} output unembed on dataset_idx {dataset_idx}"
 )
+# h0.0 seems to basically output correct logits for only the 7th token in the sorted list.
+# It also might just be predicting when the current token lies in some numerical range like 22-35
+# or around there, cause sometimes it predicts for more than 1 token when they are close by.
+# It seems to have a tendency to push down the logits for the current token, like the embeddings do,
+# for only those tokens that it doesnt care about predicting for.
 
 head = 1
 show_logits(
-    unembed(cache["blocks.0.attn.hook_result"][dataset_idx, :, head]),
+    unembed(cache["blocks.0.attn.hook_result"][dataset_idx, :, head] + model.blocks[0].attn.b_O),
     dataset.toks[dataset_idx],
     probs=False,
     title=f"h0.{head} output unembed on dataset_idx {dataset_idx}"
 )
+# h0.1 seems to output correct logits for everything but the ones that h0.0 predicts.
+# It boosts logits for all tokens which were in the input, and the amount of boost rises
+# as as we go later in the sequence, peaking at the point where it is the correct token,
+# and falling off after.
 
-#show_logits(
-#    unembed(model.blocks[0].attn.b_O.repeat(21, 1)),
-#    dataset.toks[dataset_idx],
-#    probs=False
-#    title=f"attn b_O unembedded"
-#)
 
-show_logits(
-    unembed(cache['embed'][dataset_idx]),
-    dataset.toks[dataset_idx],
-    probs=False,
-    title=f"pre-attn residual unembedded on dataset idx {dataset_idx}"
-)
-# This is very interesting. The main feature of unembeddings the pre-attention residual stream is that
-# the logits for the previous correct token are strongly negative. So at each position s, the logits for
-# the token at s-1 are strongly negative. how??????
-# literally how can you do this without an attention layer.
-show_logits(
-    unembed(cache['blocks.0.hook_resid_pre'][dataset_idx] + cache['blocks.0.attn.hook_result'][dataset_idx, :, 0] + cache['blocks.0.attn.hook_result'][dataset_idx, :, 1] + model.blocks[0].attn.b_O),
-    dataset.toks[dataset_idx],
-    probs=False,
-    title=f"all together now"
-)
+# Strangely there seems to be no general pattern of smaller tokens (than the current) skewing negative and larger tokens skewing positive.
+# It appears that the circuit works mostly by selectively boosting only those tokens which occur in the input sequence. There is not much
+# general boosting of nearby tokens if they don't appear in the input, nor is there a general pattern of pushing down tokens which are not
+# in the input, or pushing down the tokens which are smaller than the current token.
+
+#%% mean logit value on correct token for the h0.0 and h0.1 unembeddings
+a0_unembed_logits = unembed(cache["blocks.0.attn.hook_result"].sum(2) + model.blocks[0].attn.b_O)
+a0_unembed_probs = a0_unembed_logits[:, 10:-1].softmax(-1)
+a0_pc = eindex(a0_unembed_probs, targets, "batch seq [batch seq]")
+
+h00_unembed_logits = unembed(cache["blocks.0.attn.hook_result"][:, :, 0] + model.blocks[0].attn.b_O)
+h00_unembed_probs = h00_unembed_logits[:, 10:-1].softmax(-1)
+h00_pc = eindex(h00_unembed_probs, targets, "batch seq [batch seq]")
+
+h01_unembed_logits = unembed(cache["blocks.0.attn.hook_result"][:, :, 1] + model.blocks[0].attn.b_O)
+h01_unembed_probs = h01_unembed_logits[:, 10:-1].softmax(-1)
+h01_pc = eindex(h01_unembed_probs, targets, "batch seq [batch seq]")
+
+line(h00_pc.mean(0), title="h0.0 mean prob on correct by sequence position", yaxis_range=[0, 1])
+line(h01_pc.mean(0), title="h0.1 mean prob on correct by sequence position", yaxis_range=[0, 1])
+# pretty clear pattern. h0.0 rises to ~0.3 as we approach sequence position 6, then falls after.
+# h0.1 correpondingly falls from ~0.9 at the start, to 0.4 at the lowest, then rises again.
+
+# %% now plotting the head's prob on correct token by correct token, as opposed to sequence position.
+
+h00_pc_by_correct = {i: [] for i in range(51)}
+h01_pc_by_correct = {i: [] for i in range(51)}
+for n in range(N):
+    for i, target in enumerate(targets[n]):
+        targ = target.item()
+        h00_pc_by_correct[targ].append(h00_pc[n, i].item())
+        h01_pc_by_correct[targ].append(h01_pc[n, i].item())
+
+h00_mpc_by_correct = [sum(v)/len(v) for v in h00_pc_by_correct.values()]
+h01_mpc_by_correct = [sum(v)/len(v) for v in h01_pc_by_correct.values()]
+line(h00_mpc_by_correct, title="h0.0 mean prob on correct by correct token", yaxis_range=[0, 1])
+line(h01_mpc_by_correct, title="h0.1 mean prob on correct by correct token", yaxis_range=[0, 1])
+# A much stronger pattern h0.1 sharply rises on token 28 to around 0.5, rising further to 0.83 as we approach 30, then falls off, then cuts off at 34.
+# h0.1 goes to zero for most the 28-34 range. slightly higher for 35, then back to normal.
+# h0.0 also spikes from 0 to 0.62 at token 2, and h0.1 drops from ~1.0 to ~0.5.
+
+# This seems like strong evidence that the different heads are responsible, not for different sequence positions, but for predicting different tokens.
+
 #%%
 
-pre = cache['blocks.0.hook_resid_pre']
-emb = cache['hook_embed']
-posemb = cache['hook_pos_embed']
-t.testing.assert_close(pre, emb + posemb)
-
-#%%
-
-imshow(unembed(model.W_E + model.W_E_pos[12]))
