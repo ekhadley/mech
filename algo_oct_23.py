@@ -1,8 +1,10 @@
 #%%
 from mechlibs import *
 
-from monthly_algorithmic_problems import october_23_createSortedListModel
-from monthly_algorithmic_problems import october_23_SortedListDataset
+#from monthly_algorithmic_problems import october23_create_model as create_model
+#from monthly_algorithmic_problems import october23_SortedListDataset as SortedListDataset
+from monthly_algorithmic_problems import october23_create_model as create_model
+from monthly_algorithmic_problems import october24_SortedListDataset as SortedListDataset
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 if not t.cuda.is_available():
