@@ -1,8 +1,8 @@
 #%%
 from mechlibs import *
 
-from ARENA.chapter1_transformer_interp.exercises.monthly_algorithmic_problems.october23_sorted_list.sorted_list_model import create_model
-from ARENA.chapter1_transformer_interp.exercises.monthly_algorithmic_problems.october23_sorted_list.dataset import SortedListDataset
+from monthly_algorithmic_problems import october_23_createSortedListModel
+from monthly_algorithmic_problems import october_23_SortedListDataset
 
 device = t.device('cuda' if t.cuda.is_available() else 'cpu')
 if not t.cuda.is_available():
@@ -387,4 +387,3 @@ line(h01_mpc_by_correct, title="h0.1 mean prob on correct by correct token", yax
 # This seems like strong evidence that the different heads are responsible, not for different sequence positions, but for predicting different tokens.
 
 #%%
-
