@@ -14,6 +14,8 @@
 - The idea of hidden tokens is to allow them to discover and learn arbitrary length (in time or space) algorithms to apply to the problems present in NTP.
 - The current generation of reasoning models are doing reasoning using invisible tokens trained via rl. The difference is that they are trained to reason in post training, and using normal tokens which are just not checked. This makes the largest issue finding supervision for the rl, which is why the recent reasoning models are mainly improved in just math and code, where answers are verifiable and questions are synthesizable.
 - This would allow models to learn to reason during pretraining and all other places, becuase the rl reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
+- I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous. They also use start thought adn end thought tokens to enclose a thinking segment of a set number of augmented tokens.
+    - They make no mention of rl. The paper made me realized that the rl is not necessary at all. The gradient for th esupervised loss will propogate through the thought tokens naturally, as the normal supervised token positions will attend to and read info from the thought token. so yeah.
 
 # circuit mining via unsupervised component importance clustering
 - take some set of inputs and model predictions.
