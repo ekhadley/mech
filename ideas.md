@@ -67,3 +67,12 @@ for converting between currencies of different countries, one for calculating pe
 - try to see if we can find ubiquitious differences, potentially relating the different circuits to the kind of fine tuning we did.
 - some circuits are probably being created during fine tuning. Do any go away, or are they just suppressed?
 - mechinterp on anthropics 'model organisms of misalignment' models? i dont see anyone having done this, idk why it seems kind of obvious. is it a bad idea?
+
+# how good are models at noticing confusion?
+- an important part of the whole agentic language model, feedback from the environment thing is noticing when the outputs from the environment are unexpected or confusing.
+- a very common failure mode of these models is when they don't pick up on when something is amiss, something that would challenge their assumptions and cause them to rethink their plans.
+- Language models are trained as language predictors, so one might expect them to be very good at noticing unlikely tokens, but the only info a model really has available is in the CoT, which logit outputs are not.
+- The project would be to test how good models are at identifying outputs which were unlikely, given the model's understanding of the environment generating the data.
+- Could use simple programs whcih print to the terminal, showing the model the output, then simply asking it to say how unlikely it thinks that output was.
+- We could then switch out the proper program output with an incorrect one, and see if the model is able to identify that the output is unlikely, or does it succumb to hindsight bias and say that everything it already knows was likely a priori.
+- could test with models with different training recipes (one shot, reasoning models, etc)

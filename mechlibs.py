@@ -43,11 +43,7 @@ bold = '\033[1m'
 underline = '\033[4m'
 endc = '\033[0m'
 
-if (system_name := platform.system()) == "Windows":
-    mechinterp_dir = "C:\\Users\\ekhad\\Desktop\\wgmn\\mech"
-elif system_name == "Linux":
-    mechinterp_dir = "~\\wgmn\\mech"
-
+mechinterp_dir = os.path.dirname(os.path.realpath(__file__))
 if mechinterp_dir not in sys.path: sys.path.append(mechinterp_dir)
 
 def all_attn_patterns(cache):

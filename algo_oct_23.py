@@ -18,7 +18,8 @@ print(bold, yellow, f"running on device: {device}", endc)
 
 #%%
 
-filename = "/home/ek/wgmn/mech/ARENA/chapter1_transformer_interp/exercises/monthly_algorithmic_problems/october23_sorted_list/sorted_list_model.pt"
+filename = os.path.join(mechinterp_dir, "monthly_algorithmic_problems", "october23_sorted_list", "sorted_list_model.pt")
+print(filename)
 
 model = create_model(
     list_len=10,
