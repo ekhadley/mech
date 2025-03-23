@@ -24,6 +24,8 @@
 - games are also a verifiable domain.
 - could you train llms to reason about games by having them play themselves?
 - With an llm you could even have the training include multiple different games. go, chess, etc.
+- If it works, this could potentially open the door to do reasoning-rl on more domains. Domains in which solutions are not objectively verifiable, but where you can objectively say which of two solutions is better.
+
 
 # circuit mining via unsupervised component importance clustering
 - take some set of inputs and model predictions.
