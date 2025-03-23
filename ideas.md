@@ -16,10 +16,18 @@
 - This would allow models to learn to reason during pretraining and all other places, becuase the rl reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
 - I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous. They also use start thought adn end thought tokens to enclose a thinking segment of a set number of augmented tokens.
     - They make no mention of rl. The paper made me realized that the rl is not necessary at all. The gradient for th esupervised loss will propogate through the thought tokens naturally, as the normal supervised token positions will attend to and read info from the thought token. so yeah.
+    - The main difference here is that they are still only doing reasoning training as part of post training, and still only using chain of though in post trainin. The method I propose is a deeper modification to the fundamental operation of the transformer, and involves reasoning which happens on the most fundamental level, including during pretraining, post training, and basically any time the model is outputting tokens.
+
+# llm self play rl
+- current llm reasoning-through-rl approaches require verifiable domains.
+- therefore the main domains, where improvements have been the largest for reasoning models, are math and code.
+- games are also a verifiable domain.
+- could you train llms to reason about games by having them play themselves?
+- With an llm you could even have the training include multiple different games. go, chess, etc.
 
 # circuit mining via unsupervised component importance clustering
 - take some set of inputs and model predictions.
-- Create some set of metrics to establish which components of the model (all the MLP layers, all the attention heads, all the layer norms, etc) are important for a particular token prediction.
+- Create some set of metrics to establish which components of the model (all the MLP layers, all the attention heads, all the layer norms, etc) are important (contribute strongly to the output) for a particular token prediction.
 - Empirically we often find that many layers of a deep, overparameterized neural network are unimportant for a particular inference.
 - For each token prediction, we check each component to see how important it was.
 - Do unsupervised clustering to find groups of model components which are tightly related. As in, find sets of components which are often all highly important at the same time, or all basically unimportant at the same time. These components are likely coordinating in some way to produce a specific model behavior.
