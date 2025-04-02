@@ -14,17 +14,10 @@
 - The idea of hidden tokens is to allow them to discover and learn arbitrary length (in time or space) algorithms to apply to the problems present in NTP.
 - The current generation of reasoning models are doing reasoning using invisible tokens trained via rl. The difference is that they are trained to reason in post training, and using normal tokens which are just not checked. This makes the largest issue finding supervision for the rl, which is why the recent reasoning models are mainly improved in just math and code, where answers are verifiable and questions are synthesizable.
 - This would allow models to learn to reason during pretraining and all other places, becuase the rl reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
-- I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous. They also use start thought adn end thought tokens to enclose a thinking segment of a set number of augmented tokens.
+- I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous when they start the next token generation. They also use <thinking> tags to enclose a thinking segment of a set number of augmented tokens.
     - They make no mention of rl. The paper made me realized that the rl is not necessary at all. The gradient for th esupervised loss will propogate through the thought tokens naturally, as the normal supervised token positions will attend to and read info from the thought token. so yeah.
     - The main difference here is that they are still only doing reasoning training as part of post training, and still only using chain of though in post trainin. The method I propose is a deeper modification to the fundamental operation of the transformer, and involves reasoning which happens on the most fundamental level, including during pretraining, post training, and basically any time the model is outputting tokens.
 
-# llm self play rl
-- current llm reasoning-through-rl approaches require verifiable domains.
-- therefore the main domains, where improvements have been the largest for reasoning models, are math and code.
-- games are also a verifiable domain.
-- could you train llms to reason about games by having them play themselves?
-- With an llm you could even have the training include multiple different games. go, chess, etc.
-- If it works, this could potentially open the door to do reasoning-rl on more domains. Domains in which solutions are not objectively verifiable, but where you can objectively say which of two solutions is better.
 
 
 # circuit mining via unsupervised component importance clustering
@@ -60,12 +53,29 @@ for converting between currencies of different countries, one for calculating pe
 - It seems like we could sort of take the gradient of each layer's yes-no contribution with respect to the inputs of the math problem, and use that to figure out specifically which operation each layer performs.
 - This is only possible because of the yes/no binary answer, meaning the value of interest for each component is just a scalar, as opposed to the usual mechinterp challenge of trying to decipher what is the meaning of the gigantic vector that layer xyz just added into the residual stream and got read in by layer abc ...
 
-# training transformers to decompile program binaries
+# rl on chain of thought in game playing domains
+- current llm reasoning-through-rl approaches require verifiable domains.
+- therefore the main domains, where improvements have been the largest for reasoning models, are math and code.
+- games are also a verifiable domain. (the one who won probably played better)
+- could you do rl on train of thought in an adversarial game setting?
+- With an llm you could even have the training include multiple different games. go, chess, etc all at the same time.
+- If it works, this could potentially open the door to do reasoning-rl on more domains. Domains in which solutions are not objectively verifiable, but where you can objectively say which of two solutions is better.
+- Risk (Mafia, etc) involve conversation, negotiation, or deception as central mechanics. How well can models learn to outwit other models in conversation?
+    - lol, maybe they discover and deploy jailbreak sequences to cause other models to go haywire
+
+# transformer models for program binary decompilation
 - while attending to the whole input binary file, autoregressively output the source code.
 - For training data, I imagine we could use packages available via package managers (pip, pacman, apt, flatpak). These often work by downloading source code from github or similair and then compiling locally.
 - This gives us convenient access to a huge database real world programs in both source code and compiled format.
 - probably would want to output a serialized AST or something instead of normally tokenized text.
 - But it would be cool to see if it can figure out likely variable names and stuff.
+
+# transformer models for 3d object generation
+ - fine tune an instruct models on 3d object files associated with object descriptions.
+    - what kind of 3d object file?
+        - most object files contain a set of unordered vertices
+ - can we then get it to generate object files from user descriptions?
+ - actually can u fine tune instruct models on new data like this and get it to follow instructions properly? i do not know
 
 # general vein: mechinterp on reasoning models
 - for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
