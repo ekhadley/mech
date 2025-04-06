@@ -14,11 +14,9 @@
 - The idea of hidden tokens is to allow them to discover and learn arbitrary length (in time or space) algorithms to apply to the problems present in NTP.
 - The current generation of reasoning models are doing reasoning using invisible tokens trained via rl. The difference is that they are trained to reason in post training, and using normal tokens which are just not checked. This makes the largest issue finding supervision for the rl, which is why the recent reasoning models are mainly improved in just math and code, where answers are verifiable and questions are synthesizable.
 - This would allow models to learn to reason during pretraining and all other places, becuase the rl reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
-- I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous when they start the next token generation. They also use <thinking> tags to enclose a thinking segment of a set number of augmented tokens.
+- I have reently found out about the COCONUT paper from december of 2024. It describes something similair to this. They also use augmented tokens used for thinking, which are ignored when calculting supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous when they start the next token generation. They also use `<thinking>` tags to enclose a thinking segment of a set number of augmented tokens.
     - They make no mention of rl. The paper made me realized that the rl is not necessary at all. The gradient for th esupervised loss will propogate through the thought tokens naturally, as the normal supervised token positions will attend to and read info from the thought token. so yeah.
     - The main difference here is that they are still only doing reasoning training as part of post training, and still only using chain of though in post trainin. The method I propose is a deeper modification to the fundamental operation of the transformer, and involves reasoning which happens on the most fundamental level, including during pretraining, post training, and basically any time the model is outputting tokens.
-
-
 
 # circuit mining via unsupervised component importance clustering
 - take some set of inputs and model predictions.
@@ -63,19 +61,29 @@ for converting between currencies of different countries, one for calculating pe
 - Risk (Mafia, etc) involve conversation, negotiation, or deception as central mechanics. How well can models learn to outwit other models in conversation?
     - lol, maybe they discover and deploy jailbreak sequences to cause other models to go haywire
 
+# or just ask the models what they should have done
+- This is part of why human learning is so much more efficient than SGD. Humans consciously (rather than via stupid first order gradient-based updates) incorporate experience into our future decision making process by first recognizing they messed up, then asking themselves: "was there a proper line of reasoning which i should have been able to recognize before i messed up that would have led me to not mess up? If so, what was it?" Then they think hard about what they shouldve thought, and sometimes say: "yeah, in this situation it should have been obvious that the correct approach was x and that y is a mistake.",
+and that gets incorporated into their future decision process.
+- In a similair vein, what if we just instruct the agent to ocasionally, upon receiving some feedback from the environment, recognize if they made a mistake, and just ask them to output what they shouldve said in the first place.
+- I guess the idea would be to then rl the chain of thought of the unexperienced model to output what the more experienced model says they should have done in hindsight.
+    - or even just train a compact adapter like a LoRA finetune and then you could have a buch of these adapters for different tasks. Like if you need it to code, plug in the coding assistant adapter, if you need it to be a personal assistant, put on the assistant adapter, etc.
+- Can models do this? It would be a huge unlock if they can. It would basically allow the models to use their general common sense reasoning + environment feedback to recognize when they have messed up or are not on the right path, generating reward signals and specific, tailored fixes to their own behavior.
+- This totally eliminates the need for verifiable domains.
+
+# safety: testing chain of thought faithfulness across models
+- models often exhibit 'unfaithful chains of thought', where based on their cot you would expect them to arrive at a different final answer than they actually do.
+- You also see that perturbing the chain of thought often results in surprisingly small effects on producing the correct answer.
+- It would be interesting to transfer chains of thought across models, and see how it impacts performance, faithfulness, or error correction.
+- The safety case here would be to test if models are doing some kind of steganography in the cot that only they recognize. If this were true, we would probably not see that other models of similair capability are indifferent to perturbations in the chain of though they are given.
+- It would also just be interesting to see performance differences. Do models become highly specified to their own style of thought?
+- Alternatively, we could train models on tasks which encourage/require some from of steganography in the chain of thought, as a model organism, and try the other experiments on it.
+
 # transformer models for program binary decompilation
 - while attending to the whole input binary file, autoregressively output the source code.
 - For training data, I imagine we could use packages available via package managers (pip, pacman, apt, flatpak). These often work by downloading source code from github or similair and then compiling locally.
 - This gives us convenient access to a huge database real world programs in both source code and compiled format.
 - probably would want to output a serialized AST or something instead of normally tokenized text.
-- But it would be cool to see if it can figure out likely variable names and stuff.
-
-# transformer models for 3d object generation
- - fine tune an instruct models on 3d object files associated with object descriptions.
-    - what kind of 3d object file?
-        - most object files contain a set of unordered vertices
- - can we then get it to generate object files from user descriptions?
- - actually can u fine tune instruct models on new data like this and get it to follow instructions properly? i do not know
+- But it would be cool to see if it can figure out likely variable names and stuff just from the code structure.
 
 # general vein: mechinterp on reasoning models
 - for exmaple, agentic-type reasoning models have to soemtimes realize "this approach isnt working let me try something else". Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
@@ -96,3 +104,19 @@ for converting between currencies of different countries, one for calculating pe
 - Could use simple programs whcih print to the terminal, showing the model the output, then simply asking it to say how unlikely it thinks that output was.
 - We could then switch out the proper program output with an incorrect one, and see if the model is able to identify that the output is unlikely, or does it succumb to hindsight bias and say that everything it already knows was likely a priori.
 - could test with models with different training recipes (one shot, reasoning models, etc)
+
+# transformer models for 3d object generation
+ - fine tune an instruct models on 3d object files associated with object descriptions.
+    - what kind of 3d object file?
+        - most object files contain a set of unordered vertices and an unordered set of faces
+        - maybe we just do loss based on if the predicted vertext/face is anywhere in the set?
+ - can we then get it to generate object files from user descriptions?
+ - actually can u fine tune instruct models on new modalities of data like this and get it to follow instructions properly? i do not know
+    - might be worth a paper in its on right.
+
+# general vein: how do different modalities 'mesh' in the 'cognition' of the transformer?
+ - [openai recently tried applying gpt-4o to the task of protein design](https://www.technologyreview.com/2025/01/17/1110086/openai-has-created-an-ai-model-for-longevity-science/). Since a language models can handle a much higher bandwidth of data, they can literally just 'read the amino acids' in a way that is impractical for humans. In the article i read, it suggests that they simply trained it on AA sequences, then asked it quetsions and for suggestions in natural language, and that this was somewhat fruitful (for a company that was designing new proteins to make normal cells turn back into stem cells.)
+ - Is this a generally applicable paradigm for extracting patterns from opaque data? If a langauge model has understanding (the capability to next-token-predict) some type of data, as well as language understanding, is it able to translate its understanding from the one modality to normal language?
+ - This seems unlikely in the strong case, but obviously happens to some degree. It seems plausible that this failure of understanding across domains could explain poor visual understanding in LLMs, as well as lack of chain of thought faithfulness. Vision/math understanding isnt properly being transferred.
+ - Other examples of 'opaque data' could be brain activity, obfuscated code, encrypted data, etc. Can you just train on 1 and then talk about it with the model?
+ - could investigate how this mesh happens, or how to increase the degree of meshing. computer use agents still be forgetting how to click on buttons.
