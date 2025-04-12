@@ -29,16 +29,19 @@ import plotly.graph_objects as go
 import string
 import random
 from eindex import eindex
-purple = '\033[95m'
-blue = '\033[94m'
-cyan = '\033[96m'
-lime = '\033[92m'
-yellow = '\033[93m'
-red = "\033[38;5;196m"
-pink = "\033[38;5;206m"
-orange = "\033[38;5;202m"
-green = "\033[38;5;34m"
-gray = "\033[38;5;8m"
+purple = '\x1b[38;2;255;0;255m'
+blue = '\x1b[38;2;0;0;255m'
+brown = '\x1b[38;2;128;128;0m'
+cyan = '\x1b[38;2;0;255;255m'
+lime = '\x1b[38;2;0;255;0m'
+yellow = '\x1b[38;2;255;255;0m'
+red = '\x1b[38;2;255;0;0m'
+pink = '\x1b[38;2;255;51;204m'
+orange = '\x1b[38;2;255;51;0m'
+green = '\x1b[38;2;0;0;128m'
+gray = '\x1b[38;2;127;127;127m'
+magenta = '\x1b[38;2;128;0;128m'
+white = '\x1b[38;2;255;255;255m'
 bold = '\033[1m'
 underline = '\033[4m'
 endc = '\033[0m'
