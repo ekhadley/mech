@@ -6,10 +6,9 @@
 - [1: Safety](#1-safety)
   - [1.1: Interpretability](#11-interpretability)
     - [1.1.1: Circuit mining via unsupervised component importance clustering](#111-circuit-mining-via-unsupervised-component-importance-clustering)
-    - [1.1.2: There are many methods of circuit discovery now. What do we do with the circuits?](#112-there-are-many-methods-of-circuit-discovery-now-what-do-we-do-with-the-circuits)
-    - [1.1.3: Examine yes/no arithmetic/simple math problems](#113-examine-yesno-arithmeticsimple-math-problems-what-does-each-layer-contribute-to-the-answer-across-different-problems-and-how-does-the-contribution-of-each-layer-change-as-the-numerical-inputs-to-the-math-problem-change)
-    - [1.1.4: Training CoT models and an SAE/transcoder simultaneously](#114-training-cot-models-and-an-saetranscoder-simultaneously-to-penalize-cheating-by-identifying-a-hackingdishonesty-feature)
-    - [1.1.5: Related: doing circuit discovery on models before/after some fine tuning](#115-related-doing-circuit-discovery-on-models-beforeafter-some-fine-tuning)
+    - [1.1.2: Examine yes/no arithmetic/simple math problems](#113-examine-yesno-arithmeticsimple-math-problems-what-does-each-layer-contribute-to-the-answer-across-different-problems-and-how-does-the-contribution-of-each-layer-change-as-the-numerical-inputs-to-the-math-problem-change)
+    - [1.1.3: Training CoT models and an SAE/transcoder simultaneously](#114-training-cot-models-and-an-saetranscoder-simultaneously-to-penalize-cheating-by-identifying-a-hackingdishonesty-feature)
+    - [1.1.4: Related: doing circuit discovery on models before/after some fine tuning](#115-related-doing-circuit-discovery-on-models-beforeafter-some-fine-tuning)
   - [1.2: Capability Testing](#12-capability-testing)
     - [1.2.1: Testing chain of thought faithfulness across models](#121-testing-chain-of-thought-faithfulness-across-models)
     - [1.2.2: How good are models at noticing confusion?](#122-how-good-are-models-at-noticing-confusion)
@@ -45,29 +44,22 @@ for converting between currencies of different countries, one for calculating pe
 - You could do this recursively, going all the way down, making some map of nested behaviors based on the relevant components for that behavior, sort of like neuronpedia and similar projects.
 - Or going backwards: given a dataset requiring some capability, we could easily just run the model on it, find out which components are important, and see where that set of importances lie relative to the other clusters.
 
-#### 1.1.2: There are many methods of circuit discovery now. What do we do with the circuits?
-- Has there been any work in actually using discovered circuits to 'fix' or constrain models?
-- Good circuit finding works have shown examples of using the supposedly critical circuit to generate adversarial examples. In other words, to find the bugs in the algorithm the transformer implements.
-- Can we use mechanistic understanding of the circuits to fix the models in a general way?
-- Like ROME for any general circuit?
-- Sounds pretty hard when you put it like that.
-- But something in the vein of "let's use all these circuits to do something actually useful/make models safer permanently or during inference."
-
-#### 1.1.3: Examine yes/no arithmetic/simple math problems: what does each layer contribute to the answer across different problems, and how does the contribution of each layer change as the numerical inputs to the math problem change?
-- Example: "A 6-pack of coke costs $10, a 4-pack costs $3.5. Is the 6-pack a better deal?"
+#### 1.1.2: Examine yes/no arithmetic/simple math problems: what does each layer contribute to the answer across different problems, and how does the contribution of each layer change as the numerical inputs to the math problem change?
+- Example: "A 6-pack of coke costs \$10, a 4-pack costs \$3.5. Is the 6-pack a better deal?"
 - Different components will have different contributions to the yes/no logits.
 - Examine different layers/components, seeing what direction each layer contributes on the yes-no spectrum.
 - If we change the values in the problem, e.g., increase the cost of the cokes to $11, how does the yes-no contribution of each layer change?
 - It seems like we could sort of take the gradient of each layer's yes-no contribution with respect to the inputs of the math problem, and use that to figure out specifically which operation each layer performs.
 - This is only possible because of the yes/no binary answer, meaning the value of interest for each component is just a scalar, as opposed to the usual mechanistic interpretability challenge of trying to decipher what is the meaning of the gigantic vector that layer XYZ just added into the residual stream and got read in by layer ABC...
 
-#### 1.1.4: Training CoT models and an SAE/transcoder simultaneously to penalize cheating by identifying a hacking/dishonesty feature
+#### 1.1.3: Training CoT models and an SAE/transcoder simultaneously to penalize cheating by identifying a hacking/dishonesty feature
+ - stemming from [this startling paper](https://arxiv.org/pdf/2503.11926#page=22.18)
  - Or just training the SAE at the end and tweak the model weights afterward?
  - Interesting idea: where does a feature go if we train against its presence?
  - Can we track the meaning of that direction over time?
  - Can we track the direction of that meaning over time?
 
-#### 1.1.5: Related: doing circuit discovery on models before/after some fine tuning
+#### 1.1.4: Related: doing circuit discovery on models before/after some fine tuning
 - Try to see if we can find ubiquitous differences, potentially relating the different circuits to the kind of fine tuning we did.
 - Some circuits are probably being created during fine tuning. Do any go away, or are they just suppressed?
 - Mechanistic interpretability on Anthropic's 'model organisms of misalignment' models? I don't see anyone having done this. Why does it seem kind of obvious? Is it a bad idea?
@@ -102,19 +94,23 @@ for converting between currencies of different countries, one for calculating pe
 - The idea was to add a bunch of extra tokens to the model's vocab.
 - These tokens would be *ignored* when they are output during training (when calculating the loss that is). We continue spitting out tokens autoregressively (like during model inference) until we have produced as many 'real' tokens as were in the output sequence, ignoring all the extra 'thinking' tokens.
 - During training, the model will receive no supervised feedback whatsoever when a thinking token is output.
-- Instead, we include another loss term to the total loss for a sequence. The loss of a particular invisible token is a function of the ordinary, supervised loss for all the ordinary tokens which were output later.
-- So the reward signal for normal tokens is simply to correctly predict the next token, like a normal model, except there are invisible tokens in the context which weren't part of the input sequence, but can be attended to for next token prediction.
-- The reward signal for the invisible tokens is a function of the loss of all following real tokens.
-- So we encourage the model to output normal tokens which are the same as the actual next token, and to output invisible tokens which increase the chance of outputting the correct prediction for the next token.
-- It would also be probably necessary to apply a fixed cost for outputting invisible tokens to get it to eventually output real token predictions instead of "thinking forever."
-- The idea is to allow the model to think, but not out loud. To be able to output intermediate results of unconstrained semantic meaning, and to do this for as many tokens as required.
 - Language models contain in their weights algorithms which solve the problems which it is presented with in the task of next token text prediction (IOI, arithmetic, etc). These algorithms are however limited in number of steps by the number of layers in the model. (https://arxiv.org/abs/2210.10749)
-- The idea of hidden tokens is to allow them to discover and learn arbitrary length (in time or space) algorithms to apply to the problems present in NTP.
+- The idea of hidden tokens (or normal CoT) is to allow them to discover and learn arbitrary length (in time or space) algorithms to apply to the problems present in NTP, generating and storing intermediate results of the algorithm in the context (like CoT).
 - The current generation of reasoning models are doing reasoning using invisible tokens trained via RL. The difference is that they are trained to reason in post-training, and using normal tokens which are just not checked. This makes the largest issue finding supervision for the RL, which is why the recent reasoning models are mainly improved in just math and code, where answers are verifiable and questions are synthesizable.
 - This would allow models to learn to reason during pretraining and all other places, because the RL reward is just next token prediction accuracy. This method can be applied on top of the other reasoning tech too.
 - I have recently found out about the Coconut paper from December of 2024. It describes something similar to this. They also use augmented tokens (the same tokens, used in a different way) used for thinking, which are ignored when calculating supervised loss. They differ in that they do not expand the dictionary or unembed these special tokens, and simply leave thought tokens as continuous when they start the next token generation. They also use `<thinking>` tags to enclose a thinking segment of a set number of augmented tokens.
     - They make no mention of RL. The paper made me realize that the RL is not necessary at all. The gradient for the supervised loss will propagate through the thought tokens naturally, as the normal supervised token positions will attend to and read info from the thought token. So yeah.
     - The main difference here is that they are still only doing reasoning training as part of post-training, and still only using chain of thought in post-training. The method I propose is a deeper modification to the fundamental operation of the transformer, and involves reasoning which happens on the most fundamental level, including during pretraining, post-training, and basically any time the model is outputting tokens.
+- Upon further thinking, there are a few specific ways you could implement 'pretraining as rl with invisible tokens'.
+  - In every approach, we would start with a 'conditioning sequence' from a normal pretraining dataset, of lets say length $s$.
+  - We autoregressively output tokens, thinking and normal. The thinking tokens allow the model to delay its usual next-token-prediction, putting useful intermediate results into the context beforehand.
+  - In rl terminology, each conditioning sequence becomes a new environment for a new training episode, and the model's token outputs are its actions.
+  - There are several approached we could take to deal with the model's real predictions:
+    - Stop the episode upon sampling an incorrect token, and score the run based on how many correct tokens were sampled.
+    - Or when the model outputs a real token, say the t'th real token its produced, simply score the action using supervised loss against the t'th real token in the real sequence, and place that correct token into the sequence, without modifying the thought tokens.
+    - Or have the model generate a bunch of text, and use a larger, better model to score just the 'real' text, ignoring the thinking tokens. This seems best to me.
+- The tradeoff of rl in this fashion: we can squeeze much more information out of our data by thinking longer to next-token predict. This is in part becuase chain of thought increases the effective information capacity of the model.
+- So more compute (and less compute efficiency) for more data efficiency. This is primarily useful if models need extra information capacity or they need to get more information out of existing data (becuase human text is running out). The second is definitely true.
 
 #### 2.1.2: RL on chain of thought in game playing domains
 - Current LLM reasoning-through-RL approaches require verifiable domains.
@@ -167,3 +163,11 @@ for converting between currencies of different countries, one for calculating pe
  - For example, agentic-type reasoning models have to sometimes realize "this approach isn't working, let me try something else." Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
  - A reasoning model also has to choose when to stop thinking and start 'speaking'. Can the responsible circuit be discovered? Can it be intervened upon to make a model think more/less than it normally would?
  - Do the 'internal meanings' of some reasoning-critical tokens change?
+
+#### There are many methods of circuit discovery now. What do we do with the circuits?
+- Has there been any work in actually using discovered circuits to 'fix' or constrain models?
+- Good circuit finding works have shown examples of using the supposedly critical circuit to generate adversarial examples. In other words, to find the bugs in the algorithm the transformer implements.
+- Can we use mechanistic understanding of the circuits to fix the models in a general way?
+- Like ROME for any general circuit?
+- Sounds pretty hard when you put it like that.
+- But something in the vein of "let's use all these circuits to do something actually useful/make models safer permanently or during inference."
