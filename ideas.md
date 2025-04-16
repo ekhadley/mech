@@ -24,6 +24,8 @@
 - [3: Unstructured questions](#3-unstructured-questions)
   - [How do different modalities 'mesh' in the 'cognition' of the transformer?](#how-do-different-modalities-mesh-in-the-cognition-of-the-transformer)
   - [Mechanistic interpretability on reasoning models](#mechanistic-interpretability-on-reasoning-models)
+  - Using found circuits to fix models?
+  - More model organisms of misalignment
 
 # 1: Safety
 ## 1.1: Interpretability
@@ -163,6 +165,8 @@ for converting between currencies of different countries, one for calculating pe
  - For example, agentic-type reasoning models have to sometimes realize "this approach isn't working, let me try something else." Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
  - A reasoning model also has to choose when to stop thinking and start 'speaking'. Can the responsible circuit be discovered? Can it be intervened upon to make a model think more/less than it normally would?
  - Do the 'internal meanings' of some reasoning-critical tokens change?
+ - Another direction: chain of thought is basically so useful becuase it encourages the model to spread out its cognition across multiple tokens, by creating and storing intermediate results in its own context, and referring back to them later.
+  - Can mechanistic iterpretability be adapted to describe multi-token circuits?
 
 #### There are many methods of circuit discovery now. What do we do with the circuits?
 - Has there been any work in actually using discovered circuits to 'fix' or constrain models?
@@ -171,3 +175,5 @@ for converting between currencies of different countries, one for calculating pe
 - Like ROME for any general circuit?
 - Sounds pretty hard when you put it like that.
 - But something in the vein of "let's use all these circuits to do something actually useful/make models safer permanently or during inference."
+
+#### so many different model organisms could be made
