@@ -152,6 +152,7 @@ for converting between currencies of different countries, one for calculating pe
  - Can we then get it to generate object files from user descriptions?
  - Actually, can you fine-tune instruct models on new modalities of data like this and get it to follow instructions properly? I do not know.
     - Might be worth a paper in its own right.
+- openai apparently did this 2 years ago :/
 
 # 3: Unstructured questions:
 #### How do different modalities 'mesh' in the 'cognition' of the transformer?
