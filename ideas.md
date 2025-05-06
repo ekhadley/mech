@@ -161,6 +161,7 @@ for converting between currencies of different countries, one for calculating pe
  - This seems unlikely in the strong case, but obviously happens to some degree. It seems plausible that this failure of understanding across domains could explain poor visual understanding in LLMs, as well as lack of chain of thought faithfulness. Vision/math understanding isn't properly being transferred.
  - Other examples of 'opaque data' could be brain activity, obfuscated code, encrypted data, etc. Can you just train on one and then talk about it with the model?
  - Could investigate how this mesh happens, or how to increase the degree of meshing. Computer use agents still forget how to click on buttons.
+ - the very strong transfer between languages is a data point here. Seems like with about 5-15% extra training on a totally new language, we recover almost all the benchmark performance in benchmarks in the new language. Is this a strong datapoint for 'real generalization' type positions?
 
 #### Mechanistic interpretability on reasoning models
  - For example, agentic-type reasoning models have to sometimes realize "this approach isn't working, let me try something else." Can we discover the circuit that triggers this? Is it absent in non-reasoning models?
@@ -178,3 +179,6 @@ for converting between currencies of different countries, one for calculating pe
 - But something in the vein of "let's use all these circuits to do something actually useful/make models safer permanently or during inference."
 
 #### so many different model organisms could be made
+
+#### pretrained LLM for games. heirarchichal models for 'levels of thought'
+ - small vlm for visual input
